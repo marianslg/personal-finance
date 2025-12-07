@@ -1,4 +1,3 @@
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,52 +9,27 @@ datasource db {
 }
 
 model Currency {
-  id    Int    @id @default(autoincrement())
-  code  String @unique
-  name  String
-  accounts Account[]
-  instruments Instrument[]
-}   
-
-// Nuevos modelos para snapshots de inversiones
-model Account {
-  id        Int            @id @default(autoincrement())
-  name      String
-  type      String?        // e.g. "lemon", "binance", "banco"
-  currency  Currency?      @relation(fields: [currencyId], references: [id])
-  currencyId Int?
-  items     SnapshotItem[]
-  createdAt DateTime       @default(now())
+  id          Int          @id @default(autoincrement())
+  code        String       @unique
+  name        String
+  snapshots   Snapshot[]
 }
 
-model Instrument {
-  id     Int     @id @default(autoincrement())
-  symbol String  @unique   // e.g. BTC, ETH, USD, PESOS
-  name   String?
-  // quoteCurrency si quieres guardar en qué moneda cotiza (ej. USD)
-  quoteCurrency Currency?  @relation(fields: [quoteCurrencyId], references: [id])
-  quoteCurrencyId Int?
-  items  SnapshotItem[]
+model Account {
+  id         Int        @id @default(autoincrement())
+  name       String
+  position   Int?
+  snapshots  Snapshot[]
+  createdAt  DateTime   @default(now())
 }
 
 model Snapshot {
-  id        Int            @id @default(autoincrement())
-  takenAt   DateTime       @default(now()) // fecha del snapshot
-  name      String?        // ej "julio 2024"
-  items     SnapshotItem[]
-  createdAt DateTime       @default(now())
+  id              Int      @id @default(autoincrement())
+  account         Account  @relation(fields: [accountId], references: [id])
+  accountId       Int
+  currency        Currency @relation(fields: [currencyId], references: [id])
+  currencyId      Int
+  quantity        Decimal  @db.Decimal(30, 10) // cantidad de BTC/ETH/usd...
+  pricePerUnitUSD Decimal  @db.Decimal(30, 10) // cotización en USD al momento del snapshot
+  notes           String?
 }
-
-model SnapshotItem {
-  id               Int       @id @default(autoincrement())
-  snapshot         Snapshot  @relation(fields: [snapshotId], references: [id])
-  snapshotId       Int
-  account          Account   @relation(fields: [accountId], references: [id])
-  accountId        Int
-  instrument       Instrument @relation(fields: [instrumentId], references: [id])
-  instrumentId     Int
-  quantity         Decimal   @db.Decimal(30, 10) // cantidad de BTC/ETH/usd...
-  pricePerUnitUSD  Decimal   @db.Decimal(30, 10) // cotización en USD al momento del snapshot
-  notes            String?
-}
-
