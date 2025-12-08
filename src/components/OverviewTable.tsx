@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/ui/card";
 import { Button } from "@/ui/button";
 import { SnapshotCharts } from "./SnapshotCharts";
+import { PriceSimulator } from "./PriceSimulator";
 
 interface Account { id: number; name: string; snapshotPosition: number | null; snapshotVisible: boolean; [key: string]: unknown }
 interface Currency { id: number; code: string; name: string; snapshotPosition: number | null; snapshotVisible: boolean; [key: string]: unknown }
@@ -417,6 +418,13 @@ export function OverviewTable({ accounts: allAccounts, currencies: allCurrencies
         snapshots={snapshots} 
         currencies={allCurrencies} 
         prices={prices} 
+      />
+
+      {/* Simulador de Precios */}
+      <PriceSimulator
+        snapshots={snapshots}
+        currencies={allCurrencies}
+        prices={prices}
       />
       </div>
     </div>
