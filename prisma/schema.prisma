@@ -9,18 +9,21 @@ datasource db {
 }
 
 model Currency {
-  id          Int          @id @default(autoincrement())
-  code        String       @unique
-  name        String
-  snapshots   Snapshot[]
+  id               Int        @id @default(autoincrement())
+  code             String     @unique
+  name             String
+  snapshotPosition Int?
+  snapshotVisible  Boolean    @default(true)
+  snapshots        Snapshot[]
 }
 
 model Account {
-  id         Int        @id @default(autoincrement())
-  name       String
-  position   Int?
-  snapshots  Snapshot[]
-  createdAt  DateTime   @default(now())
+  id               Int        @id @default(autoincrement())
+  name             String
+  snapshotPosition Int?
+  snapshotVisible  Boolean    @default(true)
+  snapshots        Snapshot[]
+  createdAt        DateTime   @default(now())
 }
 
 model Snapshot {
@@ -32,4 +35,5 @@ model Snapshot {
   quantity        Decimal  @db.Decimal(30, 10) // cantidad de BTC/ETH/usd...
   pricePerUnitUSD Decimal  @db.Decimal(30, 10) // cotización en USD al momento del snapshot
   notes           String?
+  snapshotDate    DateTime @default(now()) // fecha para agrupar snapshots
 }

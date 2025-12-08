@@ -1,69 +1,128 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useAccounts } from "./hooks/useAccount";
 import { useCurrency } from "./hooks/useCurrency";
+import { Sidebar } from "@/components/Sidebar";
+import { SnapshotsTable } from "@/components/SnapshotsTable";
+import { SnapshotSettingsEditor } from "@/components/SnapshotSettingsEditor";
+import { OverviewTable } from "@/components/OverviewTable";
+
+interface Snapshot {
+  id: number;
+  accountId: number;
+  currencyId: number;
+  quantity: string;
+  pricePerUnitUSD: string;
+  notes: string | null;
+  account: { name: string };
+  currency: { code: string };
+}
+
+function useSnapshots() {
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/snapshot")
+      .then((res) => res.json())
+      .then((data) => setSnapshots(data))
+      .catch((err) => console.error(err))
+      .finally(() => setIsLoading(false));
+  }, []);
+
+  return { snapshots, isLoading };
+}
 
 export default function Home() {
-  const { currencies, isLoading: currencyLoading } = useCurrency();
-  const { accounts, isLoading: accountLoading } = useAccounts();
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [activeView, setActiveView] = useState<"overview" | "snapshots" | "accounts" | "currencies">("overview");
+  
+  const { accounts, isLoading: accountLoading, refetch: refetchAccounts } = useAccounts();
+  const { currencies, isLoading: currencyLoading, refetch: refetchCurrencies } = useCurrency();
+  const { snapshots, isLoading: snapshotLoading } = useSnapshots();
 
-  if (currencyLoading || accountLoading) {
-    return <div>Loading...</div>;
-  }
+  const handleSaveAccounts = async (items: { id: number; snapshotPosition: number | null; snapshotVisible: boolean }[]) => {
+    try {
+      await fetch("/api/account", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(items.map(a => ({
+          id: a.id,
+          snapshotPosition: a.snapshotPosition,
+          snapshotVisible: a.snapshotVisible,
+        }))),
+      });
+      refetchAccounts();
+    } catch (error) {
+      console.error("Error saving accounts:", error);
+    }
+  };
 
-  if (!currencies || !accounts) {
-    return <div>No data available</div>;
-  }
+  const handleSaveCurrencies = async (items: { id: number; snapshotPosition: number | null; snapshotVisible: boolean }[]) => {
+    try {
+      await fetch("/api/currency", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(items.map(c => ({
+          id: c.id,
+          snapshotPosition: c.snapshotPosition,
+          snapshotVisible: c.snapshotVisible,
+        }))),
+      });
+      refetchCurrencies();
+    } catch (error) {
+      console.error("Error saving currencies:", error);
+    }
+  };
 
   return (
-    <div className="flex min-h-screen flex-col  py-2">
-<div className="flex min-h-screen flex-col py-2">
-      {/* UN SOLO GRID */}
-      <div
-        className={`grid gap-2 grid-cols-[150px_repeat(${accounts.length},minmax(0,1fr))]`}
-      >
-        {/* Header */}
-        <div className="font-semibold col-span-1">Moneda</div>
-        {accounts.map((acc) => (
-          <div key={acc.id} className="font-semibold col-span-1">
-            {acc.name}
-          </div>
-        ))}
+    <div className="flex min-h-screen bg-background">
+      <Sidebar
+        isOpen={sidebarOpen}
+        onToggle={() => setSidebarOpen(!sidebarOpen)}
+        activeView={activeView}
+        onViewChange={setActiveView}
+      />
+      
+      <main className="flex-1 p-6 overflow-auto bg-muted/30">
+        {activeView === "overview" && accounts && currencies && (
+          <OverviewTable
+            accounts={accounts}
+            currencies={currencies}
+            isLoading={accountLoading || currencyLoading}
+          />
+        )}
 
-        {/* Filas */}
-        {currencies.map((cur) => (
-          <React.Fragment key={cur.id}>
-            <div className="col-span-1">{cur.code}</div>
-            {accounts.map((acc) => (
-              <div key={acc.id} className="col-span-1" />
-            ))}
-          </React.Fragment>
-        ))}
-      </div>
-    </div>
-      Currencies:
-      <ul>
-        {currencyLoading ? (
-          <li>Loading...</li>
-        ) : (
-          currencies &&
-          currencies.map((currency) => (
-            <li key={currency.id}>
-              {currency.code} - {currency.name}
-            </li>
-          ))
+        {activeView === "snapshots" && (
+          <SnapshotsTable snapshots={snapshots} isLoading={snapshotLoading} />
         )}
-      </ul>
-      Accounts:
-      <ul>
-        {accountLoading ? (
-          <li>Loading...</li>
-        ) : (
-          accounts &&
-          accounts.map((account) => <li key={account.id}>{account.name}</li>)
+        
+        {activeView === "accounts" && accounts && (
+          <div className="flex justify-center">
+            <SnapshotSettingsEditor
+              title="Cuentas - Configuración de Snapshot"
+              items={accounts}
+              isLoading={accountLoading}
+              getLabel={(a) => a.name}
+              onSave={handleSaveAccounts}
+            />
+          </div>
         )}
-      </ul>
+
+        {activeView === "currencies" && currencies && (
+          <div className="flex justify-center">
+            <SnapshotSettingsEditor
+              title="Monedas - Configuración de Snapshot"
+              items={currencies}
+              isLoading={currencyLoading}
+              getLabel={(c) => c.code}
+              getSubLabel={(c) => c.name}
+              onSave={handleSaveCurrencies}
+            />
+          </div>
+        )}
+      </main>
     </div>
   );
 }
